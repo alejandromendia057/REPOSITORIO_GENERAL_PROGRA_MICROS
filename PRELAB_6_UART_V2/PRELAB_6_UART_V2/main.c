@@ -45,7 +45,7 @@ int main(void)
 	 
 	initUART();
 	sei();
-	writeString("Hola sección 10");
+	writeString("Hola Alma, como te va en tu proyecto?");
 	while (1)
 	{
 		
