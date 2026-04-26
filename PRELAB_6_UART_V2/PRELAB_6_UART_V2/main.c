@@ -13,7 +13,7 @@
 /****************************************/
 // Function prototypes
 
-void initUART();
+void initUART();	
 void writeChar(char c);
 void writeString(char* string);
 void displayASCII(uint8_t valor); 
