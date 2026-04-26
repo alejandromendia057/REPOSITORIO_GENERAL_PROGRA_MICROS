@@ -94,7 +94,9 @@ void initADC(void)
 
 void menu(void)
 {
-	writeString("Bienvenido, presione 1 para leer el voltaje del potenciómetro, presione 2 para enviar un ASCII"); 
+	writeString("\r\n === MENÚ === \r\n");
+	writeString("\r\n 1. Escriba 1 para leer el voltaje dado por el potenciómetro. \r\n");
+	writeString("\r\n 2. Escriba 2 para enviar un ASCII. \r\n");
 	
 }
 /****************************************/
@@ -129,7 +131,7 @@ ISR(USART_RX_vect)
 			writeString(buffENT);
 			writeChar(',');
 			writeString(buffDEC);
-			writeString("V");
+			writeString("V \r\n");
 			// SE REESTABLECE LA VARIABLE ESTADO_FUNCIÓN A 0, PARA REGRESAR AL MENÚ 
 			estado_funcion = 0;
 			// SE DESPLIEGA EL MENÚ 
@@ -140,12 +142,12 @@ ISR(USART_RX_vect)
 		{
 			// SE ALTERA LA VARIABLE ESTADO_FUNÇION A 2 PARA QUÉ EN LA PRÓXIMA INTERRUPCIÓN SE DESPLIEGUE EL ASCII 
 			estado_funcion = 2;
-			writeString("Envia un caracter:");
+			writeString("\r\n Envia un caracter: \r\n");
 		}
 		else
 		{
 			// SI EN EL MENÚ, EL USUARIO COLOCA UNA OPCIÓN INVÁLIDA, SE DESPLIEGA EL MENÚ 
-			writeString("Opcion invalida");
+			writeString("\r\n Opcion invalida \r\n");
 			menu();
 		}
 	}
