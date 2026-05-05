@@ -2,7 +2,7 @@
  * LIBRERIA_ADC.c
  *
  * Created: 28/04/2026 11:34:49
- * Author : aleja
+ * Author : Omar Cabrera 
  */ 
 
 #include <avr/io.h>
