@@ -7,13 +7,6 @@
 
 #include "PWM1.h"
 
-// FUNCIÓN AUXILIAR PARA ESCRIBIR UN VALOR DE 16 BITS EN UN REGISTRO, PRIMERO EL BYTE ALTO, LUEGO EL BAJO
-
-static void Registro_16bits(volatile uint16_t *reg, uint16_t valor){
-	*((volatile uint8_t*) reg) = valor & 0xFF;
-	*((volatile uint8_t*) reg + 1) = (valor >> 8);
-}
-
 void initPWM1A(uint8_t invertido, uint8_t modo, uint16_t prescaler, uint16_t top){
 	
 	// SE CONFIGURA COMO SALIDA EL PB1 (OC1A)
@@ -40,21 +33,21 @@ void initPWM1A(uint8_t invertido, uint8_t modo, uint16_t prescaler, uint16_t top
 		case MODO_FAST_PWM_ICR:
 		TCCR1A |= (1 << WGM11);
 		TCCR1B |= (1 << WGM13)|(1 << WGM12);
-		Registro_16bits((volatile uint16_t*)& ICR1, top);
+		ICR1 = top;
 		break;
 		
 		// MODO 15: FAST PWM, TOP = OCR1A
 		case MODO_FAST_PWM_OCR:
 		TCCR1A |= (1 << WGM11)|(1 << WGM10);
 		TCCR1B |= (1 << WGM13)|(1 << WGM12);
-		Registro_16bits((volatile uint16_t*)& OCR1A, top);
+		OCR1A = top;
 		break;
 		
 		// MODO 8: PHASE CORRECT PWM, TOP = ICR1
 		case MODO_PHASE_CORRECT:
 		TCCR1A |= (1 << WGM11);
 		TCCR1B |= (1 << WGM13);
-		Registro_16bits((volatile uint16_t*)& ICR1, top);
+		ICR1 = top;
 		break;
 		
 		// MODO DEFAULT: 14
@@ -62,7 +55,7 @@ void initPWM1A(uint8_t invertido, uint8_t modo, uint16_t prescaler, uint16_t top
 		default:
 		TCCR1A |= (1 << WGM11);
 		TCCR1B |= (1 << WGM13)|(1 << WGM12);
-		Registro_16bits((volatile uint16_t*)& ICR1, top);
+		ICR1 = top;
 		break;
 	}
 	
@@ -125,21 +118,21 @@ void initPWM1B(uint8_t invertido, uint8_t modo, uint16_t prescaler, uint16_t top
 		case MODO_FAST_PWM_ICR:
 		TCCR1A |= (1 << WGM11);
 		TCCR1B |= (1 << WGM13)|(1 << WGM12);
-		Registro_16bits((volatile uint16_t*)& ICR1, top);
+		ICR1 = top;
 		break;
 		
 		// MODO 15: FAST PWM, TOP = OCR1A
 		case MODO_FAST_PWM_OCR:
 		TCCR1A |= (1 << WGM11)|(1 << WGM10);
 		TCCR1B |= (1 << WGM13)|(1 << WGM12);
-		Registro_16bits((volatile uint16_t*)& OCR1A, top);
+		OCR1A = top;
 		break;
 		
 		// MODO 8: PHASE CORRECT PWM, TOP = ICR1
 		case MODO_PHASE_CORRECT:
 		TCCR1A |= (1 << WGM11);
 		TCCR1B |= (1 << WGM13);
-		Registro_16bits((volatile uint16_t*)& ICR1, top);
+		ICR1 = top;
 		break;
 		
 		// MODO DEFAULT: 14
@@ -147,7 +140,7 @@ void initPWM1B(uint8_t invertido, uint8_t modo, uint16_t prescaler, uint16_t top
 		default:
 		TCCR1A |= (1 << WGM11);
 		TCCR1B |= (1 << WGM13)|(1 << WGM12);
-		Registro_16bits((volatile uint16_t*)& ICR1, top);
+		ICR1 = top;
 		break;
 	}
 	
@@ -179,17 +172,17 @@ void initPWM1B(uint8_t invertido, uint8_t modo, uint16_t prescaler, uint16_t top
 
 void updateDutyCycle1A(uint16_t valor)
 {
-	Registro_16bits((volatile uint16_t*)&OCR1A, valor);
+	OCR1A = valor;
 }
 
 void updateDutyCycle1B(uint16_t valor)
 {
-	Registro_16bits((volatile uint16_t*)&OCR1B, valor);
+	OCR1B = valor;
 }
 
 void setTop1(uint16_t top)
 {
-	Registro_16bits((volatile uint16_t*)&ICR1, top);
+	ICR1 = top;
 }
 
 void initPWM1AB(uint8_t inv_A, uint8_t inv_B, uint8_t modo, uint16_t prescaler, uint16_t top)
@@ -212,21 +205,21 @@ void initPWM1AB(uint8_t inv_A, uint8_t inv_B, uint8_t modo, uint16_t prescaler, 
 			case MODO_FAST_PWM_ICR:
 			TCCR1A |= (1 << WGM11);
 			TCCR1B |= (1 << WGM13)|(1 << WGM12);
-			Registro_16bits((volatile uint16_t*)& ICR1, top);
+			ICR1 = top;
 			break;
 			
 			// MODO 15: FAST PWM, TOP = OCR1A
 			case MODO_FAST_PWM_OCR:
 			TCCR1A |= (1 << WGM11)|(1 << WGM10);
 			TCCR1B |= (1 << WGM13)|(1 << WGM12);
-			Registro_16bits((volatile uint16_t*)& OCR1A, top);
+			OCR1A = top;
 			break;
 			
 			// MODO 8: PHASE CORRECT PWM, TOP = ICR1
 			case MODO_PHASE_CORRECT:
 			TCCR1A |= (1 << WGM11);
 			TCCR1B |= (1 << WGM13);
-			Registro_16bits((volatile uint16_t*)& ICR1, top);
+			ICR1 = top;
 			break;
 			
 			// MODO DEFAULT: 14
@@ -234,7 +227,7 @@ void initPWM1AB(uint8_t inv_A, uint8_t inv_B, uint8_t modo, uint16_t prescaler, 
 			default:
 			TCCR1A |= (1 << WGM11);
 			TCCR1B |= (1 << WGM13)|(1 << WGM12);
-			Registro_16bits((volatile uint16_t*)& ICR1, top);
+			ICR1 = top;
 			break;
 	 }
 	switch(prescaler)
