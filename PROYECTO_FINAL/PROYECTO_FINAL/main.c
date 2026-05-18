@@ -19,6 +19,8 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include "ADC/ADC.h"
 #include "EEPROM/eeprom.h"
 #include "PWM2/PWM2.h"
@@ -105,6 +107,7 @@ void setup_pwm(void);
 void setup_adc(void);
 void setup_uart(void);
 void setup_eeprom(void);
+void mostrar_menu(void); 
 
 // FUNCIONES DE MODOS 
 
@@ -112,7 +115,7 @@ void modo_manual(void);
 void modo_eeprom(void); 
 void modo_uart(void); 
 
-// Funciones para servos 
+// FUNCIONES PARA SERVOS  
 
 uint16_t mapeo16(uint16_t val);
 uint8_t mapeo8(uint16_t val);
@@ -193,8 +196,38 @@ void setup(void)
 	
 	// SE MUESTRA MODO INICIAL 
 	actualizar_leds(); 
-	writeString("INICIALIZACIÓN DE LA GARRA, MODO: MANUAL\r\n"); 
+	mostrar_menu(); 
 }
+
+// DESPLIEGUE DEL MENÚ 
+
+void mostrar_menu(void)
+{
+	writeString("PROYECTO DE PROGRAMACION DE MICROCONTROLADORES - BRAZO ROBOTICO - OMAR CABRERA\r\n");
+	writeString("MODO ACTUAL:");
+	switch(M_ACTUAL)
+	{
+		case M_MANUAL: writeString("MANUAL\r\n"); break; 
+		case M_EEPROM: writeString("EEPROM\r\n"); break; 
+		case M_UART: writeString("UART\r\n"); break; 
+	}	
+	writeString("-------------------------------------------\r\n"); 
+	writeString("BOTONES FISICOS:\r\n");
+	writeString("PBO (BOTON DE EN MEDIO) - CAMBIAR MODO\r\n");
+	writeString("PB4 (BOTÓN DE LA IZQUIERDA)- GUARDAR POSICION (EN MODO MANUAL)\r\n");
+	writeString("PD7 (BOTÓN DE LA DERECHA) - REPRODUCIR SECUENCIA (EN MODO EEPROM)\r\n");
+	writeString("-------------------------------------------\r\n"); 
+	writeString("COMANDOS UART DESDE LA TERMINAL\r\n");
+	writeString("SERVO1:ANGULO - MUEVE SERVO 1 (0-180)\r\n");
+	writeString("SERVO2:ANGULO - MUEVE SERVO 2 (0-180)\r\n");
+	writeString("SERVO3:ANGULO - MUEVE SERVO 3 (0-180)\r\n");
+	writeString("SERVO4:ANGULO - MUEVE SERVO 4 (0-180)\r\n");
+	writeString("BORRAR - ELIMINA TODAS LAS SECUENCIAS GUARDADAS\r\n"); 
+	writeString("MENU - MUESTRA DEL MENÚ\r\n");
+	writeString("-------------------------------------------\r\n"); 
+	writeString("ESCRIBA EL COMANDO DEL SERVO QUE DESEE CONTROLAR:\r\n\r\n");
+}
+
 
 void setup_pines(void)
 {
@@ -323,6 +356,7 @@ void guardar_posicion(void)
 	IDX_GUARDAR++; 
 	writeEEPROM(DIR_CONTADOR, IDX_GUARDAR); 
 	writeString("POSICION GUARDADA\r\n");
+	enviar_posicion(); 
 }
 
 void cargar_posicion(uint8_t NUM)
@@ -350,7 +384,7 @@ void reproducir_siguiente(void)
 	cargar_posicion(IDX_REPRODUCIR); 
 	IDX_REPRODUCIR++; 
 	writeString("REPRODUCIENDO\r\n"); 
-	
+	enviar_posicion(); 
 }
 
 // FUNCIONES DE BOTONES Y LEDS 
@@ -402,30 +436,110 @@ void actualizar_leds(void)
 void cambiar_Modo(void)
 {
 	M_ACTUAL = (M_ACTUAL + 1)%3; 
-	if (M_ACTUAL == M_EEPROM) IDX_REPRODUCIR = 0;				// SE REINICIA LA REPDORUCCIÓN 
+	if (M_ACTUAL == M_EEPROM) IDX_REPRODUCIR = 0;				// SE REINICIA LA REPRODUCCIÓN  
 	actualizar_leds();
-	switch(M_ACTUAL)
-	{
-		case M_MANUAL: writeString("MODO: MANUAL\r\n");
-		break; 
-		case M_EEPROM: writeString("MODO: EEPROM\r\n");
-		break; 
-		case M_UART: writeString("MODO: UART\r\n");
-		break; 
-	}
+	mostrar_menu(); 
 }
 
 // FUNCIONES UART / ADAFRUIT 
 
 void procesar_comando(void)
 {
-	writeString("CMD:");
-	writeString(BFF_RX);
-	writeString("\r\n");
+	// COMANDO "MENU" MUESTRA EL MENÚ 
+	if (BFF_RX[0] == 'M' && BFF_RX[1] == 'E' && BFF_RX[2] == 'N' && BFF_RX[3] == 'U')
+	{
+		mostrar_menu();
+		return; 
+	}
+	
+	// COMANDO PARA BORRAR SECUENCIAS GUARDADAS EN EEPROM 
+	if (BFF_RX[0] == 'B' && BFF_RX[1] == 'O' && BFF_RX[2] == 'R' && BFF_RX[3] == 'R' && BFF_RX[4] == 'A' && BFF_RX[5] == 'R' )
+	{
+		writeEEPROM(DIR_CONTADOR, 0);			// RESETEA EL CONTADOR A 0 
+		IDX_GUARDAR = 0;						// RESETEA EL ÍNDICE EN RAM 
+		IDX_REPRODUCIR = 0; 
+		writeString("EEPROM BORRADA - TODAS LAS SECUENCIAS FUERON ELIMINADAS\r\n");
+		return; 
+	}
+	// SE BUSCA EL SEPARADOR ':' 
+	// EL USUARIO DEBE ESCRIBIR EN EL FORMATO: "SERVO1:180"
+	uint8_t POS_SEP = 0; 
+	for (uint8_t i = 0; i < 31; i++)
+	{
+		if(BFF_RX[i] == ':')
+		{
+			POS_SEP = i;
+			break; 
+		}
+	}
+	// SI NO HAY ":", EL COMANDO ES INVÁLIDO 
+	if(POS_SEP == 0)
+	{
+		writeString("ERROR: FORMATO INVÁLIDO, DEBE ESCRBIR: SERVO1:90\r\n");
+		return; 
+	}
+	// CONVERSIÓN DEL GRADO INTRODUCIDO POR EL USUARIO A ENTERO 
+	uint8_t ANGULO = (uint8_t)atoi(BFF_RX + POS_SEP +1);
+	
+	// SE LIMITA EL ÁNGULO AL RANGO VÁLIDO 
+	if(ANGULO > 180)ANGULO = 180; 
+	
+	// IDENTIFICACIÓN DEL SERVO QUE SE QUIERE MOVER 
+	char NUM_SERVO = BFF_RX[5]; 
+	
+	switch(NUM_SERVO)
+	{
+		case '1':
+		PULSO_S1 = SERVO16_MIN + (uint16_t)((uint32_t)ANGULO*(SERVO16_MAX - SERVO16_MIN)/180);
+		updateDutyCycle1A(PULSO_S1);
+		writeString("SERVO1 - MOVIMIENTO EJECUTADO\r\n");
+		break; 
+		
+		case '2': 
+		PULSO_S2 = SERVO16_MIN + (uint16_t)((uint32_t)ANGULO*(SERVO16_MAX - SERVO16_MIN)/180);
+		updateDutyCycle1B(PULSO_S2);
+		writeString("SERVO2 - MOVIMIENTO EJECUTADO\r\n");
+		break;
+		
+		case '3':
+		PULSO_S3 = SERVO8_MIN + (uint8_t)((uint32_t)ANGULO*(SERVO8_MAX - SERVO8_MIN)/180);
+		updateDutyCycle0B(PULSO_S3);
+		writeString("SERVO3 - MOVIMIENTO EJECUTADO\r\n");
+		break;
+		
+		case '4':
+		PULSO_S4 = SERVO8_MIN + (uint8_t)((uint32_t)ANGULO*(SERVO8_MAX - SERVO8_MIN)/180);
+		updateServo2B(PULSO_S4);
+		writeString("SERVO4 - MOVIMIENTO EJECUTADO\r\n");
+		break;
+		
+		default: 
+		writeString("ERROR: SERVO INTRODUCIDO NO RECONOCIDO, POR FAVOR ESCRIBIR SERVO1, SERVO2, SERVO3, SERVO4\r\n");
+		break; 
+	}
+	enviar_posicion(); 
 }
 
 void enviar_posicion(void)
 {
+	// CONVIERTE LOS PULSOS ACTUALES DE VUELTA A ÁNGULOS (0 - 180)
+	// PYTHON ACTUALIZA LOS SLIDERS EN ADAFRUIT 
+	
+	// SERVOS 1 Y 2 
+	uint8_t ANG1 = (uint8_t)((uint32_t)(PULSO_S1 - SERVO16_MIN)*180/ (SERVO16_MAX - SERVO16_MIN));
+	uint8_t ANG2 = (uint8_t)((uint32_t)(PULSO_S2 - SERVO16_MIN)*180/ (SERVO16_MAX - SERVO16_MIN));
+	
+	// SERVOS 3 Y 4 
+	uint8_t ANG3 = (uint8_t)((uint32_t)(PULSO_S3 - SERVO8_MIN)*180/(SERVO8_MAX - SERVO8_MIN));
+	uint8_t ANG4 = (uint8_t)((uint32_t)(PULSO_S4 - SERVO8_MIN)*180/(SERVO8_MAX - SERVO8_MIN));
+	
+	// ENVÍO DE CADA SERVO EN UNA LÍNEA SEPARADA 
+	// EL FORMATO ES: "SERVO1:90\n" PARA QUE PYTHON LO LEA Y LO PUBLIQUE EN ADAFRUIT 
+	char BUFFER[20];
+	sprintf(BUFFER, "servo1:%d\r\n", ANG1); writeString(BUFFER); 
+	sprintf(BUFFER, "servo2:%d\r\n", ANG2); writeString(BUFFER);
+	sprintf(BUFFER, "servo3:%d\r\n", ANG3); writeString(BUFFER);
+	sprintf(BUFFER, "servo4:%d\r\n", ANG4); writeString(BUFFER);   
 	
 }
 /****************************************/
